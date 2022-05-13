@@ -341,3 +341,28 @@ VALUES
     ,'Unknown'
 );
 
+INSERT INTO Dim_Customer
+(
+     DimCustomerID
+	,DimLocationID
+    ,SourceCustomerID
+    ,FullName
+    ,FirstName
+    ,LastName
+    ,Gender
+    ,EmailAddress
+    ,PhoneNumber
+)
+	SELECT 
+(
+     DimCustomerID
+	,DimLocationID
+    ,SourceCustomerID
+    ,CONCAT(FirstName,' ', LastName) AS FullName
+    ,FirstName
+    ,LastName
+    ,Gender
+    ,EmailAddress
+    ,PhoneNumber
+)
+    FROM Customer
