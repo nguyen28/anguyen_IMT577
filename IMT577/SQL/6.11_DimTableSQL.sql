@@ -1,13 +1,16 @@
 --Dim Location first
+TRUNCATE Dim_Location
+
 create or replace table IMT577_DW_Ashli_nguyen.public.Dim_Location(
     DimLocationID INT IDENTITY(1,1) CONSTRAINT PK_DimLocationID PRIMARY KEY NOT NULL --Surrogate Key
-	,SourceLocationID INTEGER NOT NULL --Natural Key
+	,SourceLocationID VARCHAR(255) NOT NULL --Natural Key
     ,PostalCode INTEGER NOT NULL
     ,Address VARCHAR(255) NOT NULL
     ,City VARCHAR(255) NOT NULL
     ,StateProvince VARCHAR(255) NOT NULL
     ,Country VARCHAR(255) NOT NULL
 );
+
 
 INSERT INTO Dim_Location
 (
@@ -32,8 +35,7 @@ VALUES
 
 INSERT INTO Dim_Location
 (
-     DimLocationID
-	,SourceLocationID
+	SourceLocationID
     ,PostalCode
     ,Address
     ,City
@@ -41,30 +43,29 @@ INSERT INTO Dim_Location
     ,Country
 )
 	SELECT 
-	SubsegmentID AS DimLocationID
-    ,SubsegmentID AS SourceLocationID
+    CustomerID AS SourceLocationID
     ,PostalCode
     ,Address
     ,City
     ,StateProvince
     ,Country
+     FROM Customer
      
-	FROM Customer
-
-/**Need assistance on how to resolve the issues for resller and customer ID in which the ID are varchar(255)**/
-INSERT INTO Dim_Location
-(
-     DimLocationID
-	,SourceLocationID
+     UNION
+    
+     SELECT 
+    StoreID AS SourceLocationID
     ,PostalCode
     ,Address
     ,City
     ,StateProvince
     ,Country
-)
+	FROM Store 
+    
+    UNION
+    
 	SELECT 
-	ResellerID AS DimLocationID
-    ,ResellerID AS SourceLocationID
+    ResellerID AS SourceLocationID
     ,PostalCode
     ,Address
     ,City
@@ -76,6 +77,7 @@ INSERT INTO Dim_Location
 --SELECT * FROM Dim_Location;
 
 --Dim Channel 2nd
+USE schema IMT577_DW_Ashli_nguyen.Public;
 TRUNCATE DIM_Channel
 
 create or replace table IMT577_DW_Ashli_nguyen.public.Dim_Channel(
@@ -103,18 +105,16 @@ VALUES
     ,'Unknown'
 );
 
-INSERT INTO IMT577_DW_Ashli_nguyen.public.Dim_Channel
+INSERT INTO Dim_Channel
 (
-     DimChannelID
-	,SourceChannelID
+     SourceChannelID
     ,SourceChannelCategoryID
     ,Channel
     ,ChannelCategory
 )
 	SELECT 
-    ChannelID AS DimChannelID
-	,ChannelID AS SourceChannelID
-    ,Channel.ChannelCategoryID AS SourceChannelCategoryID
+	ChannelID AS SourceChannelID
+    ,ChannelCategory.ChannelCategoryID AS SourceChannelCategoryID
     ,Channel
     ,ChannelCategory.ChannelCategory
     FROM Channel
@@ -123,6 +123,7 @@ INSERT INTO IMT577_DW_Ashli_nguyen.public.Dim_Channel
 
 
 --DIM Product
+TRUNCATE DIM_Product
 
 create or replace table IMT577_DW_Ashli_nguyen.public.Dim_Product(
     DimProductID INT IDENTITY(1,1) CONSTRAINT PK_DimProductID PRIMARY KEY NOT NULL --Surrogate Key
@@ -174,9 +175,8 @@ VALUES
 );
 
 INSERT INTO Dim_Product
-(
-     DimProductID
-	,SourceProductID
+( 
+	 SourceProductID
     ,SourceProductTypeID
     ,SourceProductCategoryID
     ,ProductName
@@ -190,8 +190,7 @@ INSERT INTO Dim_Product
     ,ProductProfitMarginUnitPercent
 )
 	SELECT 
-    ProductID AS DimProductID
-	,ProductID AS SourceProductID
+	ProductID AS SourceProductID
     ,Product.ProducttypeID AS SourceProductTypeID
     ,ProductType.productcategoryID AS SourceProductCategoryID
     ,Product AS ProductName
@@ -202,15 +201,25 @@ INSERT INTO Dim_Product
     ,Cost AS ProductCost
     ,(Price - Cost) AS ProductRetailProfit
     ,(Wholesaleprice - cost) AS ProductWholesaleUnitProfit
-    ,(ProductWholesaleUnitProfit / 100) AS ProductProfitMarginUnitPercent
+    ,ROUND(100 * DIV0(ProductRetailProfit, Product.Cost), 3) AS ProductProfitMarginUnitPercent
     FROM Product
    
     INNER JOIN ProductType ON Product.ProducttypeID = ProductType.ProducttypeID
     INNER JOIN ProductCategory ON ProductType.productcategoryID = ProductCategory.productcategoryID
 
+/**Different way to do an inner join
+FROM
+    STAGE_PRODUCT,
+    STAGE_PRODUCTCATEGORY,
+    STAGE_PRODUCTTYPE
+WHERE
+    STAGE_PRODUCT.ProductTypeID = STAGE_PRODUCTTYPE.ProdcutTypeID  --I had a typo in my stage where the id is prodCUT... instead of prodUCT...
+    AND STAGE_PRODUCTTYPE.ProdcutCategoryID = STAGE_PRODUCTCATEGORY.ProductCategoryID  --same typo. Same table, different field.
+**/
 
 --DIM Store
 USE schema IMT577_DW_Ashli_nguyen.Public;
+Truncate Dim_Store
 
 create or replace table Dim_Store(
     DimStoreID INT IDENTITY(1,1) CONSTRAINT PK_DimStoreID PRIMARY KEY NOT NULL --Surrogate Key
@@ -240,15 +249,13 @@ VALUES
 
 INSERT INTO Dim_Store
 (
-     DimStoreID
-	,DimLocationID
+    DimLocationID
     ,SourceStoreID
     ,StoreNumber
     ,StoreManager
 )
 	SELECT 
-    StoreID AS DimStoreID
-	,StoreID AS DimLocationID
+	StoreID AS DimLocationID
     ,StoreID AS SourceStoreID
     ,StoreNumber
     ,StoreManager
@@ -260,7 +267,7 @@ Truncate Dim_Reseller
 create or replace table Dim_Reseller(
     DimResellerID INT IDENTITY(1,1) CONSTRAINT PK_DimResellerID PRIMARY KEY NOT NULL --Surrogate Key
 	,DimLocationID INTEGER CONSTRAINT FK_DimLocationIDReseller FOREIGN KEY REFERENCES Dim_Location (DimLocationID) NOT NULL
-    ,SourceResellerID INTEGER NOT NULL --Natural Key
+    ,SourceResellerID VARCHAR(255) NOT NULL --Natural Key
     ,ContactName VARCHAR(255) NOT NULL
     ,PhoneNumber VARCHAR(255) NOT NULL
     ,EmailAddress VARCHAR(255) NOT NULL
@@ -287,27 +294,28 @@ VALUES
 
 INSERT INTO Dim_Reseller
 (
-     DimResellerID
-	,DimLocationID
+	DimLocationID
     ,SourceResellerID
     ,ContactName
     ,PhoneNumber
     ,EmailAddress
 )
 	SELECT 
-     ResellerID AS DimResellerID
-	,ResellerID AS DimLocationID
+	Dim_Location.DimLocationID AS DimLocationID
     ,ResellerID AS SourceResellerID
     ,Contact AS ContactName
     ,PhoneNumber
     ,EmailAddress
     FROM Reseller
+    INNER JOIN Dim_Location ON Reseller.ResellerID = Dim_location.SourceLocationID
    
 --Dim Customer
+TRUNCATE Dim_Customer
+
 create or replace table Dim_Customer(
     DimCustomerID INT IDENTITY(1,1) CONSTRAINT PK_DimCustomerID PRIMARY KEY NOT NULL --Surrogate Key
 	,DimLocationID INTEGER CONSTRAINT FK_DimLocationIDCustomer FOREIGN KEY REFERENCES Dim_Location (DimLocationID) NOT NULL
-    ,SourceCustomerID INTEGER NOT NULL --Natural Key
+    ,SourceCustomerID VARCHAR(255) NOT NULL --Natural Key
     ,FullName VARCHAR(255) NOT NULL
     ,FirstName VARCHAR(255) NOT NULL
     ,LastName VARCHAR(255) NOT NULL
@@ -332,7 +340,7 @@ VALUES
 ( 
      -1
     ,-1
-    ,-1
+    ,'Unknown'
     ,'Unknown'
     ,'Unknown'
     ,'Unknown'
@@ -343,8 +351,7 @@ VALUES
 
 INSERT INTO Dim_Customer
 (
-     DimCustomerID
-	,DimLocationID
+	DimLocationID
     ,SourceCustomerID
     ,FullName
     ,FirstName
@@ -354,15 +361,14 @@ INSERT INTO Dim_Customer
     ,PhoneNumber
 )
 	SELECT 
-(
-     DimCustomerID
-	,DimLocationID
-    ,SourceCustomerID
+	 Dim_Location.DimLocationID AS DimLocationID
+    ,CustomerID AS SourceCustomerID
     ,CONCAT(FirstName,' ', LastName) AS FullName
     ,FirstName
     ,LastName
     ,Gender
     ,EmailAddress
     ,PhoneNumber
-)
     FROM Customer
+    INNER JOIN Dim_Location ON Customer.CustomerID = Dim_location.SourceLocationID
+   
