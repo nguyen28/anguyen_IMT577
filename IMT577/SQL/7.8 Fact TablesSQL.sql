@@ -1,21 +1,17 @@
 
 --create Fact_SRCSalesTarget
 USE schema IMT577_DW_Ashli_nguyen.Public;
-create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleTarget (
-(
-     DimProductID INTEGER CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
-     ,DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
+create table IMT577_DW_Ashli_nguyen.public.Fact_SRCSalesTarget(
+    DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
      ,DimResellerID INTEGER CONSTRAINT FK_DimResellerID FOREIGN KEY REFERENCES Dim_Reseller(DimResellerID) --Foreign Key
-    ,DimCustomerID INTEGER CONSTRAINT FK_DimCustomerID FOREIGN KEY REFERENCES Dim_Customer(DimCustomerID) --Foreign Key,DimChannelID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
-     ,DimSalesDateID INTEGER CONSTRAINT FK_DimSalesDateID FOREIGN KEY REFERENCES Dim_Date(DimSalesDateID) --Foreign Key
+    ,DimChannelID INTEGER CONSTRAINT FK_DimChannelID FOREIGN KEY REFERENCES Dim_Channel(DimChannelID) --Foreign Key
      ,DimLocationID INTEGER CONSTRAINT FK_DimLocationID FOREIGN KEY REFERENCES Dim_Location(DimLocationID) --Foreign Key
      ,SourceSalesHeaderID INT --Natural Key
     ,SourceSalesDetailID INTEGER --Natural Key 
 	,SaleAmount FLOAT
     ,SaleQuantity INT
-    ,SaleUnitPrice FLOAT
-    ,SaleExtendedCost FLOAT
-    ,SaleTotalProfit FLOAT
+
+
 );
 
 INSERT INTO Fact_ProductSaleTarget(
@@ -40,17 +36,70 @@ FROM
 USE schema IMT577_DW_Ashli_nguyen.Public;
 create table IMT577_DW_Ashli_nguyen.public.Fact_SalesActual (
 (
-    DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
+    DimProductID INT CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
+    ,DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
     ,DimResellerID INTEGER CONSTRAINT FK_DimResellerID FOREIGN KEY REFERENCES Dim_Reseller(DimResellerID) --Foreign Key
     ,DimCustomerID INTEGER CONSTRAINT FK_DimCustomerID FOREIGN KEY REFERENCES Dim_Customer(DimCustomerID) --Foreign Key
+    ,DimChannelID INTEGER CONSTRAINT FK_DimChannelID FOREIGN KEY REFERENCES Dim_Channel(DimChannelID) --Foreign Key
+    ,DimSalesDateID INTEGER CONSTRAINT FK_DimSalesDateID FOREIGN KEY REFERENCES Dim_Date(DATE_PKEY) --Foreign Key
+    ,DimLocationID INTEGER CONSTRAINT FK_DimLocationID FOREIGN KEY REFERENCES Dim_Location(DimLocationID) --Foreign Key
+    ,SourceSalesHeaderID INT
+    ,SourceSalesDetailID INT
+    ,SaleAmount INT
+    ,SaleQuantity INT
+    ,SaleUnitPrice FLOAT
+    ,SaleExtendedCost FLOAT
+    ,SaleTotalProfit FLOAT
+);
+
+Insert Into Fact_ProductSaleTarget(
+    DimProductID 
+    ,DimStoreID 
+    ,DimResellerID
+    ,DimCustomerID
+    ,DimChannelID 
+    ,DimSalesDateID 
+    ,DimLocationID
+    ,SourceSalesHeaderID 
+    ,SourceSalesDetailID 
+    ,SaleAmount
+    ,SaleQuantity
+    ,SaleUnitPrice
+    ,SaleExtendedCost 
+    ,SaleTotalProfit 
+)
+    Dim_product.DimProductID 
+    ,Dim_Store.DimStoreID
+    ,Dim_Reseller.DimResellerID
+    ,Dim_Customer.DimCustomerID
+    ,Dim_Channel.DimChannelID 
+    ,Dim_Date.Date_PKey AS DimSalesDateID 
+    ,Dim_Location.DimLocationID
+    ,SalesHeader.SalesHeaderID AS SourceSalesHeaderID 
+    ,SalesDetail.SalesDetailID AS SourceSalesDetailID 
+    ,SalesDetail.SalesAmount AS SaleAmount
+    ,SalesDetail.SalesQuantity AS SaleQuantity
+    ,DIM_Product.productretailprice AS SaleUnitPrice
+    ,DIM_Product.productcost AS SaleExtendedCost 
+    ,DIM_Product.Productretailprofit AS SaleTotalProfit 
+FROM
+    DIM_Product
+    Inner Join SalesDetail ON dim_product.ProductID = SalesDetail.DimProductID
+    Inner Join SalesHeader ON SalesDetail.SalesHeaderID = SalesHeader.SalesHeaderID
+    Left Outer Join DIM_Channel ON SalesHeader.ChannelID = DIM_Channel.DimChannelID
+    Left Outer Join DIM_Reseller ON SalesHeader.ResellerID = DIM_Channel.DIMResellerID
+    Left Outer Join DIM_Store ON SalesHeader.StoreID = DIM_Channel.DimStoreID
+    Left Outer Join DIM_Customer ON SalesHeader.CustomerID = DIM_Customer.DimCustomerID
+    LEFT OUTER Join DIM_Date ON .Year = DIM_Date.Year
+
+
 --create Fact_ProductSaleTarget
 DROP TABLE IF EXISTS Fact_ProductSaleTarget
 
-create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleTarget (
-(
-     DimProductID INTEGER CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
-     DimTargetDateID INTEGER CONSTRAINT FK_DimTaretDateID FOREIGN KEY REFERENCES Dim_Date(DimTargetDateID) --Foreign Key
-	,ProductTargetSalesQuantity FLOAT
+create table IMT577_DW_Ashli_Nguyen.public.Fact_ProductSaleTarget(
+     DimProductID INT CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
+    ,DimTargetDateID number(9) CONSTRAINT FK_DimTargetDateID FOREIGN KEY REFERENCES Dim_Date(DATE_PKEY) --Foreign Key
+	,ProductTargetSalesQuantity INT
 );
 
 Insert Into Fact_ProductSaleTarget(
@@ -60,7 +109,8 @@ Insert Into Fact_ProductSaleTarget(
 )
 SELECT Distinct
     Dim_Product.DimProductID
-    ,Dim_Date.DimTargetDateID
-    ,ProductTargetSalesQuantity
-    FROM Dim_Product
-    INNER JOIN DIM_Date ON Dim_date.DATE_PKEY = Dim_product
+    ,Dim_Date.Date_PKey AS DimTargetDateID
+    ,Targetdata_product.SalesQuantityTarget AS ProductTargetSalesQuantity
+    FROM Targetdata_product
+    INNER JOIN DIM_Product ON Targetdata_product.ProductID = Dim_product.DimProductID
+    LEFT OUTER Join DIM_Date ON Targetdata_product.Year = DIM_Date.Year
