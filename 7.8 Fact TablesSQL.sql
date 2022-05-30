@@ -15,19 +15,22 @@ INSERT INTO Fact_SRCSalesTarget(
     ,DimTargetDateID
     ,SalesTargetAmount 
 )
-    
-    NVL(dim_store.Dim_storeID, -1) AS DimStoreID
-    ,NVL(dimReseller.Dimresellerid, -1) as ResellerID 
-    ,NVL(Dim_Channel.Dim_ChannelID, -1) AS DimChannelID 
+Select Distinct
+    CASE    
+        WHEN TargetName = 'Store Number 5' Then 5
+        WHEN TargetName = 'Store Number 8' then 8
+    Else -1 
+    end AS storeID
+    ,NVL(dim_Reseller.Dimresellerid, -1) as dimResellerID 
+    ,NVL(Channel.ChannelID, -1) AS DimChannelID 
     ,Dim_Date.Date_PKey AS DimTargetDateID
     ,(Targetdata_Channel.Targetsalesamount)/365 AS SalesTargetAmount
 
-FROM Dim_Channel
-    INNER JOIN Targetdata_Channel ON DIM_Channel.Channel= Targetdata_Channel.ChannelName
-    Inner Join SalesHeader ON DIM_Channel.DimChannelID= SalesHeader.ChannelID 
-    Left Outer Join DIM_Reseller ON SalesHeader.ResellerID = DIM_Reseller.DIMResellerID
-    Left Outer Join Dim_Store ON SalesHeader.StoreID = DIM_Store.DimStoreID CASE WHEN TargetName = 'Store Number 5' Then 5 and else "-1"
-    Left Outer Join Dim_Store ON SalesHeader.StoreID = DIM_Store.DimStoreID CASE WHEN TargetName = 'Store Number 8' Then 8 and else "-1"
+FROM SalesHeader 
+    Inner Join Channel ON SalesHeader.ChannelID= Channel.ChannelID
+    Inner Join Targetdata_Channel ON Channel.Channel = Targetdata_Channel.ChannelName
+    Left Outer Join Dim_Store ON SalesHeader.StoreID = DIM_Store.DimStoreID 
+    Left Join Dim_reseller ON salesheader.resellerid = dim_reseller.sourceresellerid
     LEFT OUTER Join DIM_Date ON Targetdata_Channel.Year = DIM_Date.Year
 
 --Fact_ProductSaleActual
@@ -53,30 +56,51 @@ create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleActual(
 );
 
 INSERT INTO Fact_ProductSaleActual(
-    NVL(Dim_Product.DimProductID, -1) AS DimProductID 
-     NVL(dim_store.Dim_storeID, -1) AS DimStoreID 
-    ,NVL(dimReseller.Dimresellerid, "Unknown") as ResellerID 
-     ,NVL(Dim_Customer.DimCustomerID,"Unknown") AS DimCustomerID 
-     ,NVL(Dim_Channel.Dim_ChannelID, -1) AS DimChannelID 
-     ,Dim_Date.DimSalesDateID 
-     ,NVL(Dim_Location.Dim_LocationID, -1) AS DimChannelID DimLocationID 
-     ,SourceSalesHeaderID 
+    DimProductID 
+    ,DimStoreID
+    ,DimResellerID 
+    ,DimCustomerID 
+    ,DimChannelID 
+    ,DimSalesDateID 
+     ,DimLocationID 
+    ,SourceSalesHeaderID 
+    ,SourceSalesDetailID 
+	,SaleAmount 
+    ,SaleQuantity 
+    ,SaleUnitPrice 
+    ,SaleExtendedCost 
+    ,SaleTotalProfit 
+)
+
+SELECT Distinct
+    CASE 
+        WHEN Salesheader.StoreID IS NOT NULL THEN Dim_Store.DimLocationID = Dim_location.DimLocationID
+        ELSE -1
+        end AS DimLocationID
+    ,NVL(Dim_Product.DimProductID, -1) AS DimProductID 
+    ,NVL(salesheader.storeID, -1) AS DimStoreID 
+    ,NVL(Dim_reseller.dimresellerid, -1) as DimResellerID 
+    ,NVL(dim_customer.dimCustomerID,-1) AS DimCustomerID 
+    ,NVL(salesheader.ChannelID, -1) AS DimChannelID 
+    ,Dim_Date.Date_PKey AS DimSalesDateID 
+   ,NVL(Dim_Location.Dim_LocationID, -1) AS DimLocationID 
+    ,SourceSalesHeaderID 
     ,SourceSalesDetailID 
 	,SaleAmount 
     ,SaleQuantity 
     ,(salesdetail.salesamount/salesdetail.salequantity) AS SaleUnitPrice 
     ,(product.cost * salesdetail.salequantity AS SaleExtendedCost 
     ,SaleTotalProfit 
-)
-FROM DIM_Product
-    Left Join SalesDetail ON dim_product.ProductID = SalesDetail.DimProductID
-    Left Join DIM_Store ON DIM_product.SourceproductID = DIM_Store.SourcestoreID
-    Left Join DIM_Channel ON DIM_Store.SourcestoreID= DIM_Channel.SourceChannelID
-    Left Outer Join DIM_Reseller ON DIM_Channel.SourceResellerID = DIM_Reseller.SourceResellerID
-    Left Outer Join DIM_Customer ON DIM_Reseller.SourceresellerID = DIM_Customer.SourceCustomerID
-   Left Outer Join Dim_Location ON Dim_Location.DimLocationID = salesdetail.DimLocationID CASE WHEN Salesheader.StoreID IS NOT NULL THEN Dim_Store.DimLocationID = salesdetail.DimLocationID
-    LEFT OUTER Join DIM_Date ON Salesheader.date = DIM_Date.Date_Pkey
 
+FROM SalesDetail
+    LEFT JOIN Salesheader ON SalesDetail.SalesHeaderID = Salesheader.SalesHeaderID
+    Left Join Dim_product ON dim_product.dimProductID = SalesDetail.ProductID
+    Left Outer Join DIM_Reseller ON Salesheader.ResellerID = DIM_Reseller.SourceResellerID
+    Left Outer Join DIM_Customer ON Salesheader.customerid = DIM_Customer.SourceCustomerID
+    LEFT OUTER Join DIM_Date ON Salesheader.date = DIM_Date.Date_Pkey
+    Left Join DIM_Store ON Salesheader.storeID = DIM_Store.SourcestoreID
+    Left Outer Join Dim_Location ON Dim_Location.DimLocationID = dim_store.dimLocationID 
+   -- Left Join DIM_Channel ON DIM_Store.SourcestoreID= DIM_Channel.SourceChannelID
 --Create Fact_ProductSaleTarget
 USE schema IMT577_DW_Ashli_nguyen.Public;
 create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleTarget  (
