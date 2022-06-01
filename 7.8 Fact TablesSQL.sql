@@ -41,8 +41,8 @@ create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleActual(
 (
      DimProductID INTEGER CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
      ,DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
-     ,DimResellerID VarChar(255) CONSTRAINT FK_DimResellerID FOREIGN KEY REFERENCES Dim_Reseller(DimResellerID) --Foreign Key
-    ,DimCustomerID VarChar(255) CONSTRAINT FK_DimCustomerID FOREIGN KEY REFERENCES Dim_Customer(DimCustomerID) --Foreign Key,DimChannelID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
+     ,DimResellerID INTEGER CONSTRAINT FK_DimResellerID FOREIGN KEY REFERENCES Dim_Reseller(DimResellerID) --Foreign Key
+    ,DimCustomerID INTEGER CONSTRAINT FK_DimCustomerID FOREIGN KEY REFERENCES Dim_Customer(DimCustomerID) --Foreign Key,DimChannelID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
      ,DimChannelID INTEGER CONSTRAINT FK_DimChannelID FOREIGN KEY REFERENCES Dim_Channel(DimChannelID) --Foreign Key
     ,DimSalesDateID Number(9) CONSTRAINT FK_DimSalesDateID FOREIGN KEY REFERENCES Dim_Date(DimSalesDateID) --Foreign Key
      ,DimLocationID INTEGER CONSTRAINT FK_DimLocationID FOREIGN KEY REFERENCES Dim_Location(DimLocationID) --Foreign Key
@@ -73,33 +73,37 @@ INSERT INTO Fact_ProductSaleActual(
 )
 
 SELECT Distinct
-    CASE 
-        WHEN Salesheader.StoreID IS NOT NULL THEN Dim_Store.DimLocationID = Dim_location.DimLocationID
-        ELSE -1
-        end AS DimLocationID
-    ,NVL(Dim_Product.DimProductID, -1) AS DimProductID 
+    NVL(Dim_Product.DimProductID, -1) AS DimProductID 
     ,NVL(salesheader.storeID, -1) AS DimStoreID 
     ,NVL(Dim_reseller.dimresellerid, -1) as DimResellerID 
     ,NVL(dim_customer.dimCustomerID,-1) AS DimCustomerID 
     ,NVL(salesheader.ChannelID, -1) AS DimChannelID 
     ,Dim_Date.Date_PKey AS DimSalesDateID 
-   ,NVL(Dim_Location.Dim_LocationID, -1) AS DimLocationID 
-    ,SourceSalesHeaderID 
-    ,SourceSalesDetailID 
-	,SaleAmount 
-    ,SaleQuantity 
-    ,(salesdetail.salesamount/salesdetail.salequantity) AS SaleUnitPrice 
-    ,(product.cost * salesdetail.salequantity AS SaleExtendedCost 
-    ,SaleTotalProfit 
+   ,NVL(Dim_Location.DimLocationID, -1) AS DimLocationID 
+    ,salesheader.salesheaderid AS SourceSalesHeaderID 
+    ,salesdetail.salesdetailID AS SourceSalesDetailID 
+	,salesdetail.SalesAmount AS SaleAmount 
+    ,salesdetail.SalesQuantity AS SaleQuantity 
+    ,(salesdetail.salesamount/salesdetail.salesquantity) AS SaleUnitPrice
+    ,CASE 
+        when (salesdetail.SalesAmount / salesdetail.SalesQuantity) = Dim_Product.ProductRetailPrice then Dim_Product.ProductRetailPrice else Dim_Product.ProductWholesalePrice end AS SaleExtendedCost,
+    CASE 
+        when (salesdetail.SalesAmount / salesdetail.SalesQuantity) = Dim_Product.ProductRetailPrice then (Dim_Product.ProductRetailProfit * salesdetail.SalesQuantity) else (Dim_Product.ProductWholesaleUnitProfit * salesdetail.SalesQuantity) 
+        end AS SaleTotalProfit  
 
 FROM SalesDetail
     LEFT JOIN Salesheader ON SalesDetail.SalesHeaderID = Salesheader.SalesHeaderID
     Left Join Dim_product ON dim_product.dimProductID = SalesDetail.ProductID
     Left Outer Join DIM_Reseller ON Salesheader.ResellerID = DIM_Reseller.SourceResellerID
     Left Outer Join DIM_Customer ON Salesheader.customerid = DIM_Customer.SourceCustomerID
-    LEFT OUTER Join DIM_Date ON Salesheader.date = DIM_Date.Date_Pkey
+    Inner Join Targetdata_Product ON dim_product.dimproductID = Targetdata_Product.productID
+    LEFT OUTER Join DIM_Date ON TO_DATE(salesheader.date, 'mm/dd/yy') = dim_date.date
     Left Join DIM_Store ON Salesheader.storeID = DIM_Store.SourcestoreID
     Left Outer Join Dim_Location ON Dim_Location.DimLocationID = dim_store.dimLocationID 
+     /**  CASE 
+        WHEN Salesheader.StoreID IS NOT NULL THEN Dim_Store.DimLocationID = Dim_location.DimLocationID
+        ELSE -1
+        end AS DimLocationID**/
    -- Left Join DIM_Channel ON DIM_Store.SourcestoreID= DIM_Channel.SourceChannelID
 --Create Fact_ProductSaleTarget
 USE schema IMT577_DW_Ashli_nguyen.Public;
