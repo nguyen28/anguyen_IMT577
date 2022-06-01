@@ -35,16 +35,15 @@ FROM SalesHeader
 
 --Fact_ProductSaleActual
 USE schema IMT577_DW_Ashli_nguyen.Public;
-DROP TABLE IF EXISTS Fact_ProductSaleActual
+DROP TABLE IF EXISTS Fact_SalesActual
 
-create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleActual(
-(
+create table IMT577_DW_Ashli_nguyen.public.Fact_SalesActual(
      DimProductID INTEGER CONSTRAINT FK_DimProductID FOREIGN KEY REFERENCES Dim_Product(DimProductID) --Foreign Key
      ,DimStoreID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
      ,DimResellerID INTEGER CONSTRAINT FK_DimResellerID FOREIGN KEY REFERENCES Dim_Reseller(DimResellerID) --Foreign Key
     ,DimCustomerID INTEGER CONSTRAINT FK_DimCustomerID FOREIGN KEY REFERENCES Dim_Customer(DimCustomerID) --Foreign Key,DimChannelID INTEGER CONSTRAINT FK_DimStoreID FOREIGN KEY REFERENCES Dim_Store(DimStoreID) --Foreign Key
      ,DimChannelID INTEGER CONSTRAINT FK_DimChannelID FOREIGN KEY REFERENCES Dim_Channel(DimChannelID) --Foreign Key
-    ,DimSalesDateID Number(9) CONSTRAINT FK_DimSalesDateID FOREIGN KEY REFERENCES Dim_Date(DimSalesDateID) --Foreign Key
+    ,DimSalesDateID Number(9) CONSTRAINT FK_DimSalesDateID FOREIGN KEY REFERENCES Dim_Date(Date_PKey) --Foreign Key
      ,DimLocationID INTEGER CONSTRAINT FK_DimLocationID FOREIGN KEY REFERENCES Dim_Location(DimLocationID) --Foreign Key
      ,SourceSalesHeaderID INT --Natural Key
     ,SourceSalesDetailID INTEGER --Natural Key 
@@ -55,7 +54,7 @@ create table IMT577_DW_Ashli_nguyen.public.Fact_ProductSaleActual(
     ,SaleTotalProfit FLOAT
 );
 
-INSERT INTO Fact_ProductSaleActual(
+INSERT INTO Fact_SalesActual(
     DimProductID 
     ,DimStoreID
     ,DimResellerID 
@@ -96,7 +95,7 @@ FROM SalesDetail
     Left Join Dim_product ON dim_product.dimProductID = SalesDetail.ProductID
     Left Outer Join DIM_Reseller ON Salesheader.ResellerID = DIM_Reseller.SourceResellerID
     Left Outer Join DIM_Customer ON Salesheader.customerid = DIM_Customer.SourceCustomerID
-    Inner Join Targetdata_Product ON dim_product.dimproductID = Targetdata_Product.productID
+    --Inner Join Targetdata_Product ON dim_product.dimproductID = Targetdata_Product.productID
     LEFT OUTER Join DIM_Date ON TO_DATE(salesheader.date, 'mm/dd/yy') = dim_date.date
     Left Join DIM_Store ON Salesheader.storeID = DIM_Store.SourcestoreID
     Left Outer Join Dim_Location ON Dim_Location.DimLocationID = dim_store.dimLocationID 
